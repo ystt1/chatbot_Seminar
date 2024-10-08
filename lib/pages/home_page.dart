@@ -5,6 +5,7 @@
   import 'package:flutter/material.dart';
   import 'package:flutter_gemini/flutter_gemini.dart';
   import 'package:image_picker/image_picker.dart';
+  import 'dart:io';
 
   class HomePage extends StatefulWidget {
     const HomePage({super.key});
@@ -47,50 +48,62 @@
                 messages: messages,
                 typingUsers: isTyping ? [chatBot] : [],
                 messageOptions: MessageOptions(
-                  messageMediaBuilder: (ChatMessage message, ChatMessage? previousMessage, ChatMessage? nextMessage) {
-                    // Check if the message contains media
-                    if (message.medias != null && message.medias!.isNotEmpty) {
-                      return Image.network(
-                        message.medias!.first.url,
-                        width: 150,
-                        height: 150,
-                        fit: BoxFit.cover,
-                      );
-                    } else {
-                      return SizedBox.shrink(); // Return an empty widget if no media is present
-                    }
-                  },
-                ),
+  messageMediaBuilder: (ChatMessage message, ChatMessage? previousMessage, ChatMessage? nextMessage) {
+    if (message.medias != null && message.medias!.isNotEmpty) {
+      return kIsWeb
+        ? Image.network(
+            message.medias!.first.url,
+            width: 150,
+            height: 150,
+            fit: BoxFit.cover,
+          )
+        : Image.file(
+            File(message.medias!.first.url),
+            width: 150,
+            height: 150,
+            fit: BoxFit.cover,
+          );
+    } else {
+      return SizedBox.shrink();
+    }
+  },
+),
               ),
             ),
-            if (imageUrl != "")
-              if (imageUrl != null)
-                Container(
-                  margin: EdgeInsets.all(8),
-                  child: Stack(
-                    alignment: Alignment.centerRight,
-                    children: [
-                      Image.network(
-                        imageUrl!,
-                        width: 150,
-                        height: 150,
-                        fit: BoxFit.cover,
-                      ),
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: IconButton(
-                          icon: Icon(Icons.close, color: Colors.red),
-                          onPressed: () {
-                            setState(() {
-                              imageUrl = ""; // Xóa hình ảnh được chọn
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            if (imageUrl.isNotEmpty)
+  Container(
+    margin: EdgeInsets.all(8),
+    child: Stack(
+      alignment: Alignment.centerRight,
+      children: [
+        kIsWeb
+          ? Image.network(
+              imageUrl,
+              width: 150,
+              height: 150,
+              fit: BoxFit.cover,
+            )
+          : Image.file(
+              File(imageUrl),
+              width: 150,
+              height: 150,
+              fit: BoxFit.cover,
+            ),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: IconButton(
+            icon: Icon(Icons.close, color: Colors.red),
+            onPressed: () {
+              setState(() {
+                imageUrl = "";
+              });
+            },
+          ),
+        ),
+      ],
+    ),
+  ),
           ],
         )
 
@@ -135,6 +148,7 @@
             String response =
                 event.content?.parts?.fold("", (pre, cur) => "$pre${cur.text}") ??
                     "";
+            
             lastMessage.text += response;
             setState(() {
               messages.insert(0, lastMessage);
@@ -162,22 +176,22 @@
       }
     }
 
-    void _sendMediaMessage() async {
-      ImagePicker imagePicker = ImagePicker();
-      XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
-      if (file != null) {
-        String url;
-        if (kIsWeb) {
-          Uint8List imageBytes = await file.readAsBytes();
-          String base64Image = base64Encode(imageBytes);
+      void _sendMediaMessage() async {
+        ImagePicker imagePicker = ImagePicker();
+        XFile? file = await imagePicker.pickImage(source: ImageSource.gallery);
+        if (file != null) {
+          String url;
+          if (kIsWeb) {
+            Uint8List imageBytes = await file.readAsBytes();
+            String base64Image = base64Encode(imageBytes);
 
-          url = 'data:image/png;base64,$base64Image';
-        } else {
-          url = file.path;
+            url = 'data:image/png;base64,$base64Image';
+          } else {
+            url = file.path;
+          }
+          setState(() {
+            imageUrl=url;
+          });
         }
-        setState(() {
-          imageUrl=url;
-        });
       }
-    }
   }
